@@ -77,7 +77,7 @@ const Header: React.FC<{ hasKey: boolean; openPicker: () => void }> = ({ hasKey,
             </Link>
           ))}
           <div className="flex items-center gap-5 ml-4 border-l border-white/10 pl-6">
-            <div className="text-[10px] font-bold text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded cursor-pointer hover:border-white transition-colors">BEHANCE</div>
+            <div className="text-[10px] font-bold text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded cursor-pointer hover:border-white transition-colors uppercase tracking-widest">Studio</div>
             <Instagram className="w-4 h-4 cursor-pointer text-zinc-500 hover:text-white transition-colors" />
           </div>
         </div>
@@ -158,7 +158,7 @@ const App: React.FC = () => {
       if (window.aistudio?.hasSelectedApiKey) {
         const selected = await window.aistudio.hasSelectedApiKey();
         setHasKey(selected);
-        // Prompt for key if not selected
+        // Prompt for key if not selected on entry
         if (!selected) {
            setShowKeyWall(true);
         }
@@ -170,7 +170,7 @@ const App: React.FC = () => {
   const openPicker = async () => {
     if (window.aistudio?.openSelectKey) {
       await window.aistudio.openSelectKey();
-      // Assume success to avoid race condition as per guidelines
+      // Assume success to proceed as per guidelines
       setHasKey(true);
       setShowKeyWall(false);
     }
@@ -182,7 +182,6 @@ const App: React.FC = () => {
       <div className="min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
         <Header hasKey={hasKey} openPicker={openPicker} />
         
-        {/* Key Wall Overlay */}
         <AnimatePresence>
           {showKeyWall && (
             <motion.div 
@@ -195,22 +194,24 @@ const App: React.FC = () => {
                 <div className="w-20 h-20 bg-blue-500/20 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-blue-500/30">
                   <Key size={40} className="text-blue-500" />
                 </div>
-                <h2 className="text-4xl font-bold mb-4">Unlock Pigeon Studio</h2>
+                <h2 className="text-4xl font-bold mb-4">Unlock the Studio</h2>
                 <p className="text-zinc-400 mb-8 leading-relaxed">
-                  To experience our full Pro AI capabilities—including the Motion Reel generator and 2K storyboarding—please select an API key from a paid GCP project.
+                  To access our pro-tier AI tools like custom Motion Reel generation and 2K storyboarding, please select an API key from a paid GCP project.
                 </p>
-                <button 
-                  onClick={openPicker}
-                  className="w-full bg-blue-500 text-white py-5 rounded-2xl font-bold text-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 shadow-2xl shadow-blue-500/20"
-                >
-                  Select Studio Key <Sparkles size={20} />
-                </button>
-                <button 
-                  onClick={() => setShowKeyWall(false)} 
-                  className="mt-6 text-zinc-600 hover:text-zinc-400 text-sm font-bold uppercase tracking-widest"
-                >
-                  Continue with Limited Features
-                </button>
+                <div className="space-y-4">
+                  <button 
+                    onClick={openPicker}
+                    className="w-full bg-blue-500 text-white py-5 rounded-2xl font-bold text-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 shadow-2xl shadow-blue-500/20"
+                  >
+                    Select Studio Key <Sparkles size={20} />
+                  </button>
+                  <button 
+                    onClick={() => setShowKeyWall(false)} 
+                    className="w-full py-4 text-zinc-600 hover:text-zinc-400 text-sm font-bold uppercase tracking-widest border border-white/5 rounded-2xl hover:bg-white/5"
+                  >
+                    Explore Limited Version
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

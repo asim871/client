@@ -26,9 +26,10 @@ const Services: React.FC = () => {
       setLoadingStep('Crafting narrative strategy...');
       const textResponse = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
-        config: { thinkingConfig: { thinkingBudget: 16000 } },
-        contents: `You are a legendary Creative Director. Provide a cinematic animation brief for: "${prompt}". 
-        Include: Hook, Narrative Summary, and Visual Language (lighting, palette, motion feel).`,
+        contents: { parts: [{ text: `You are a legendary Creative Director. Provide a cinematic animation brief for: "${prompt}". Include: Hook, Narrative Summary, and Visual Language (lighting, palette, motion feel).` }] },
+        config: { 
+          thinkingConfig: { thinkingBudget: 8000 }
+        },
       });
       
       const conceptText = textResponse.text;
@@ -41,7 +42,7 @@ const Services: React.FC = () => {
           model: 'gemini-3-pro-image-preview',
           contents: {
             parts: [
-              { text: `High-fidelity 3D cinematic animation keyframe. Concept: ${prompt}. Style: ${conceptText}. Professional lighting, Octane Render, masterpiece quality, no text.` }
+              { text: `High-fidelity 3D cinematic animation keyframe. Concept: ${prompt}. Visual Style: ${conceptText}. Professional studio lighting, photorealistic, 8k resolution, octane render, masterpiece, no text.` }
             ]
           },
           config: {
@@ -131,7 +132,7 @@ const Services: React.FC = () => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="e.g. A digital bank for Mars..."
-                  className="w-full md:w-96 bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-16"
+                  className="w-full md:w-96 bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-16 text-white"
                   onKeyDown={(e) => e.key === 'Enter' && handleBrainstorm()}
                 />
                 <button 
@@ -176,7 +177,7 @@ const Services: React.FC = () => {
                     <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-widest">
                       <FileText size={14} /> Narrative Brief
                     </div>
-                    <div className="text-zinc-300 whitespace-pre-line leading-relaxed italic">
+                    <div className="text-zinc-300 whitespace-pre-line leading-relaxed italic text-sm">
                       {aiResponse}
                     </div>
                   </div>
@@ -190,13 +191,13 @@ const Services: React.FC = () => {
                         <>
                           <img src={aiImage} alt="AI Concept" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                             <button className="bg-white text-black p-4 rounded-full shadow-2xl"><Maximize2 size={20} /></button>
+                             <a href={aiImage} download="concept.png" className="bg-white text-black p-4 rounded-full shadow-2xl"><Maximize2 size={20} /></a>
                           </div>
                         </>
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 gap-4">
                           <ImageIcon size={40} strokeWidth={1} />
-                          <p className="italic text-sm">Waiting for visual output...</p>
+                          <p className="italic text-sm">Rendering visual output...</p>
                         </div>
                       )}
                     </div>

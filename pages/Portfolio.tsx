@@ -29,17 +29,18 @@ const Portfolio: React.FC = () => {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `What are the latest visual trends and award-winning examples for: "${searchQuery}" in animation and motion design for 2024? Give a brief summary.`,
+        contents: { parts: [{ text: `Provide an analysis of the latest 2024 motion design and animation trends for: "${searchQuery}". Focus on visual styles, color palettes, and notable award-winning examples.` }] },
         config: {
           tools: [{ googleSearch: {} }]
         }
       });
 
       setTrendText(response.text || "");
+      // Correctly extract grounding chunks for display
       setTrendResults(response.candidates?.[0]?.groundingMetadata?.groundingChunks || []);
     } catch (error) {
       console.error(error);
-      setTrendText("Failed to fetch live trends.");
+      setTrendText("Failed to retrieve live industry trends. Please verify your Studio Key.");
     } finally {
       setIsSearching(false);
     }
@@ -54,7 +55,7 @@ const Portfolio: React.FC = () => {
         </p>
 
         {/* Live Trend Tool */}
-        <div className="glass p-8 rounded-3xl border-blue-500/20 border mb-20 bg-gradient-to-br from-blue-500/5 to-transparent">
+        <div className="glass p-8 rounded-3xl border-blue-500/20 border mb-20 bg-gradient-to-br from-blue-500/5 to-transparent shadow-2xl">
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="text-blue-500 w-4 h-4" />
             <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-300">Industry Inspiration Hub</h3>
@@ -67,13 +68,13 @@ const Portfolio: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search live trends (e.g., 'Modern 2D character styles')"
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-medium"
               />
             </div>
             <button 
               type="submit" 
               disabled={isSearching}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-xl shadow-blue-500/20"
             >
               {isSearching ? <Loader2 className="animate-spin" size={18} /> : 'Search Live Trends'}
             </button>
@@ -82,15 +83,15 @@ const Portfolio: React.FC = () => {
           <AnimatePresence>
             {trendText && (
               <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="bg-black/20 p-6 rounded-2xl border border-white/5"
               >
-                <div className="prose prose-invert prose-sm max-w-none text-zinc-400 mb-6">
+                <div className="prose prose-invert prose-sm max-w-none text-zinc-400 mb-6 leading-relaxed">
                   {trendText}
                 </div>
                 {trendResults.length > 0 && (
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-4 pt-4 border-t border-white/5">
                     {trendResults.map((chunk: any, i: number) => (
                       chunk.web?.uri && (
                         <a 
@@ -98,7 +99,7 @@ const Portfolio: React.FC = () => {
                           href={chunk.web.uri} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-3 py-1.5 rounded-full border border-blue-500/20"
+                          className="text-[10px] text-blue-400 hover:text-white font-black uppercase tracking-widest flex items-center gap-2 bg-blue-500/5 px-4 py-2 rounded-full border border-blue-500/20 transition-all hover:bg-blue-500"
                         >
                           {chunk.web.title || 'Source'} <ExternalLink size={10} />
                         </a>
@@ -118,7 +119,7 @@ const Portfolio: React.FC = () => {
           <button
             key={cat}
             onClick={() => setFilter(cat as any)}
-            className={`px-6 py-2 rounded-full text-sm font-bold transition-all border ${
+            className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all border ${
               filter === cat 
                 ? 'bg-white text-black border-white' 
                 : 'bg-transparent text-zinc-500 border-white/10 hover:border-white/40'

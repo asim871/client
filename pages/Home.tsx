@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Play, ArrowRight, ChevronRight, Star, Video, Loader2, Wand2, X } from 'lucide-react';
+import { Play, ArrowRight, ChevronRight, Star, Video, Loader2, Wand2, X, Sparkles } from 'lucide-react';
 import { PROJECTS } from '../constants';
 import { GoogleGenAI } from '@google/genai';
 
@@ -11,16 +11,19 @@ const Home: React.FC = () => {
   const [isVeoLoading, setIsVeoLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [veoPrompt, setVeoPrompt] = useState('');
+  const [status, setStatus] = useState('');
 
   const generateMotionReel = async () => {
     if (!veoPrompt.trim()) return;
     setIsVeoLoading(true);
     setVideoUrl(null);
+    setStatus('Initializing production pipeline...');
+    
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       let operation = await ai.models.generateVideos({
         model: 'veo-3.1-fast-generate-preview',
-        prompt: `A professional animation motion reel for ${veoPrompt}. Dynamic motion, clean shapes, high contrast, cinematic studio lighting, masterpiece animation.`,
+        prompt: `A high-end cinematic animation reel for a brand named "${veoPrompt}". Professional motion design, 3D elements, sleek textures, fluid transitions, studio lighting, masterpiece quality.`,
         config: {
           numberOfVideos: 1,
           resolution: '720p',
@@ -28,21 +31,29 @@ const Home: React.FC = () => {
         }
       });
 
-      while (!operation.done) {
+      let attempts = 0;
+      while (!operation.done && attempts < 60) {
+        setStatus(`Rendering frames... ${attempts * 2}%`);
         await new Promise(resolve => setTimeout(resolve, 10000));
-        operation = await ai.operations.getVideosOperation({operation: operation});
+        operation = await ai.operations.getVideosOperation({ operation: operation });
+        attempts++;
       }
 
       const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (downloadLink) {
+        setStatus('Finalizing video file...');
         const fetchRes = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
         const blob = await fetchRes.blob();
         setVideoUrl(URL.createObjectURL(blob));
+      } else {
+        throw new Error("Generation timed out or failed.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Veo failed", err);
+      alert(err.message?.includes("not found") ? "Pro Video features require a Studio Key. Please click the key icon in the navigation." : "Video generation encountered an error.");
     } finally {
       setIsVeoLoading(false);
+      setStatus('');
     }
   };
 
@@ -65,7 +76,7 @@ const Home: React.FC = () => {
                 {[...Array(5)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}
               </div>
               <span className="text-[10px] font-black tracking-[0.3em] uppercase text-zinc-500">
-                Premium Motion Agency
+                Award-Winning Motion Studio
               </span>
             </div>
             
@@ -78,7 +89,7 @@ const Home: React.FC = () => {
               We handcraft high-fidelity animated stories that propel ambitious brands into the cultural spotlight.
             </p>
 
-            <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
               <div className="flex gap-4">
                 <Link 
                   to="/portfolio" 
@@ -94,36 +105,55 @@ const Home: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Veo Reel Generator integration */}
-              <div className="glass p-2 rounded-full flex items-center gap-2 pr-4 border-blue-500/20">
-                <input 
-                  type="text" 
-                  value={veoPrompt}
-                  onChange={(e) => setVeoPrompt(e.target.value)}
-                  placeholder="Brand name for AI Reel..."
-                  className="bg-transparent border-none focus:outline-none px-4 text-xs font-bold w-32 md:w-48"
-                />
-                <button 
-                  onClick={generateMotionReel}
-                  disabled={isVeoLoading}
-                  className="bg-blue-500 p-3 rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50"
-                >
-                  {isVeoLoading ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-                </button>
+              <div className="flex flex-col gap-2">
+                <div className="glass p-2 rounded-full flex items-center gap-2 pr-4 border-blue-500/20 group focus-within:border-blue-500 transition-all">
+                  <input 
+                    type="text" 
+                    value={veoPrompt}
+                    onChange={(e) => setVeoPrompt(e.target.value)}
+                    placeholder="Enter brand name..."
+                    className="bg-transparent border-none focus:outline-none px-4 text-xs font-bold w-32 md:w-48 text-white placeholder-zinc-600"
+                    onKeyDown={(e) => e.key === 'Enter' && generateMotionReel()}
+                  />
+                  <button 
+                    onClick={generateMotionReel}
+                    disabled={isVeoLoading || !veoPrompt.trim()}
+                    className="bg-blue-500 p-3 rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 text-white flex items-center justify-center"
+                    title="Generate AI Motion Reel"
+                  >
+                    {isVeoLoading ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+                  </button>
+                </div>
+                {status && (
+                  <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest ml-4 flex items-center gap-2">
+                    <Sparkles size={10} className="animate-pulse" /> {status}
+                  </span>
+                )}
               </div>
             </div>
           </motion.div>
         </div>
 
-        {/* Video Reel Modal */}
         <AnimatePresence>
           {videoUrl && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6">
-              <div className="relative max-w-5xl w-full aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-4xl bg-black">
-                 <button onClick={() => setVideoUrl(null)} className="absolute top-6 right-6 z-10 p-4 rounded-full bg-black/50 hover:bg-black transition-colors">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6"
+            >
+              <div className="relative max-w-5xl w-full aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_100px_rgba(59,130,246,0.2)] bg-black">
+                 <button 
+                   onClick={() => setVideoUrl(null)} 
+                   className="absolute top-6 right-6 z-10 p-4 rounded-full bg-black/50 hover:bg-white hover:text-black transition-all"
+                 >
                    <X size={24} />
                  </button>
-                 <video src={videoUrl} autoPlay loop controls className="w-full h-full object-contain" />
+                 <video src={videoUrl} autoPlay loop controls className="w-full h-full object-cover" />
+                 <div className="absolute bottom-6 left-6 glass px-6 py-3 rounded-2xl border-white/10">
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">Generated Custom Reel</p>
+                    <h4 className="text-xl font-bold">{veoPrompt} Concept</h4>
+                 </div>
               </div>
             </motion.div>
           )}
