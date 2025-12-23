@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, FileText, Calendar, MessageSquare, Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { Send, FileText, Calendar, MessageSquare, Sparkles, Loader2, RefreshCw, Mic, Square } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 
 const Contact: React.FC = () => {
@@ -15,6 +15,59 @@ const Contact: React.FC = () => {
 
   const [isSent, setIsSent] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+      mediaRecorder.current.ondataavailable = (e) => audioChunks.current.push(e.data);
+      mediaRecorder.current.onstop = processVoiceBrief;
+      mediaRecorder.current.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Mic access denied", err);
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorder.current?.stop();
+    setIsRecording(false);
+  };
+
+  const processVoiceBrief = async () => {
+    setIsRefining(true);
+    try {
+      const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      reader.onloadend = async () => {
+        const base64Audio = (reader.result as string).split(',')[1];
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: [
+            {
+              parts: [
+                { inlineData: { data: base64Audio, mimeType: 'audio/webm' } },
+                { text: "Transcribe this project brief and rewrite it to be a professional 100-word animation project inquiry." }
+              ]
+            }
+          ]
+        });
+        if (response.text) {
+          setFormState(prev => ({ ...prev, project: response.text || prev.project }));
+        }
+        setIsRefining(false);
+      };
+    } catch (error) {
+      console.error(error);
+      setIsRefining(false);
+    }
+  };
 
   const handleRefineBrief = async () => {
     if (!formState.project.trim()) return;
@@ -58,8 +111,8 @@ const Contact: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-xl font-bold mb-2">New Projects</h4>
-                  <p className="text-zinc-500">hello@pigeon.studio</p>
-                  <p className="text-zinc-500">+1 (555) 000-1234</p>
+                  <p className="text-zinc-500 font-medium">hello@pigeon.studio</p>
+                  <p className="text-zinc-500 font-medium">+1 (555) 000-1234</p>
                 </div>
               </div>
               <div className="flex gap-6 items-start">
@@ -68,7 +121,7 @@ const Contact: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-xl font-bold mb-2">Book a Session</h4>
-                  <p className="text-zinc-500">Schedule a 15-minute intro call to discuss your goals.</p>
+                  <p className="text-zinc-500 font-medium">Schedule a 15-minute intro call to discuss your goals.</p>
                   <button className="text-blue-500 font-bold mt-2 hover:underline">Pick a time</button>
                 </div>
               </div>
@@ -92,24 +145,34 @@ const Contact: React.FC = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex justify-between">
                 Project Brief
-                <button 
-                  type="button" 
-                  onClick={handleRefineBrief}
-                  disabled={isRefining || !formState.project}
-                  className="text-blue-500 hover:text-blue-400 text-[10px] flex items-center gap-1 transition-colors disabled:opacity-30"
-                >
-                  {isRefining ? <Loader2 className="animate-spin" size={10} /> : <Sparkles size={10} />}
-                  Refine with AI
-                </button>
+                <div className="flex gap-4">
+                  <button 
+                    type="button" 
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`${isRecording ? 'text-red-500 animate-pulse' : 'text-zinc-500'} hover:text-white text-[10px] flex items-center gap-1 transition-colors`}
+                  >
+                    {isRecording ? <Square size={10} /> : <Mic size={10} />}
+                    {isRecording ? 'Recording...' : 'Voice Brief'}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={handleRefineBrief}
+                    disabled={isRefining || !formState.project}
+                    className="text-blue-500 hover:text-blue-400 text-[10px] flex items-center gap-1 transition-colors disabled:opacity-30"
+                  >
+                    {isRefining ? <Loader2 className="animate-spin" size={10} /> : <Sparkles size={10} />}
+                    Refine with AI
+                  </button>
+                </div>
               </label>
               <div className="relative">
-                <textarea required rows={4} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" placeholder="Tell us about your project..." value={formState.project} onChange={(e) => setFormState({...formState, project: e.target.value})} />
+                <textarea required rows={4} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-medium text-zinc-300" placeholder="Tell us about your project or record a voice note..." value={formState.project} onChange={(e) => setFormState({...formState, project: e.target.value})} />
                 <AnimatePresence>
                   {isRefining && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-xl">
                       <div className="flex items-center gap-3 text-blue-400">
                         <RefreshCw className="animate-spin" size={18} />
-                        <span className="font-bold text-xs uppercase tracking-widest">Polishing Brief...</span>
+                        <span className="font-bold text-xs uppercase tracking-widest">Processing...</span>
                       </div>
                     </motion.div>
                   )}
@@ -119,7 +182,7 @@ const Contact: React.FC = () => {
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Estimated Budget</label>
-              <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500" value={formState.budget} onChange={(e) => setFormState({...formState, budget: e.target.value})}>
+              <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium" value={formState.budget} onChange={(e) => setFormState({...formState, budget: e.target.value})}>
                 <option className="bg-zinc-900">Under $10k</option>
                 <option className="bg-zinc-900">$10k - $25k</option>
                 <option className="bg-zinc-900">$25k - $50k</option>

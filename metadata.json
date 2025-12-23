@@ -1,5 +1,7 @@
 {
-  "name": "Pigeon Studio - Motion Design Portfolio",
-  "description": "A premium, visual-first portfolio for an animation and motion design studio featuring project showcases, service deep-dives, and an AI-powered creative concept generator.",
-  "requestFramePermissions": []
+  "name": "Pigeon Studio | Handcrafted Animation & Motion Design",
+  "description": "Award-winning animation studio specializing in 3D visuals, high-fidelity motion design, and cinematic storytelling for global brands.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

@@ -62,7 +62,7 @@ export const SERVICES: Service[] = [
   {
     id: '3d',
     title: '3D Animation',
-    description: 'High-end CGI and immersive cinematic worlds. We specialize in detailed product visualizations, realistic architectural walkthroughs, and high-impact 3D assets for commercial advertisements and epic game trailers.',
+    description: 'High-end CGI and immersive cinematic worlds. We specialize in photorealistic outputs, high-polygon modeling, and custom animation rigging for complex character movements. Our expertise spans detailed product visualizations, realistic architectural walkthroughs, and high-impact 3D assets for commercial advertisements and epic game trailers.',
     icon: '🧊',
     image: 'https://picsum.photos/seed/3d/600/400'
   },
