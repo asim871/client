@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SERVICES } from '../constants';
 import { GoogleGenAI } from '@google/genai';
-import { Sparkles, Send, Loader2, Image as ImageIcon, FileText } from 'lucide-react';
+import { Sparkles, Send, Loader2, Image as ImageIcon, FileText, AlertCircle } from 'lucide-react';
 
 const Services: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -11,21 +11,21 @@ const Services: React.FC = () => {
   const [aiImage, setAiImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const handleBrainstorm = async () => {
     if (!prompt.trim()) return;
     setIsLoading(true);
+    setError(null);
     setAiResponse(null);
     setAiImage(null);
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      // Step 1: Generate Narrative Concept
       setLoadingStep('Crafting narrative strategy...');
-      const textModel = 'gemini-3-flash-preview';
       const textResponse = await ai.models.generateContent({
-        model: textModel,
+        model: 'gemini-3-flash-preview',
         contents: `You are a world-class Creative Director at Pigeon Studio. 
         A client wants an animation concept for: "${prompt}". 
         Provide a punchy 3-part brief: 
@@ -35,32 +35,37 @@ const Services: React.FC = () => {
         config: { temperature: 0.8 }
       });
       
-      const conceptText = textResponse.text || "Concept generated.";
+      const conceptText = textResponse.text;
+      if (!conceptText) throw new Error("Could not generate concept.");
       setAiResponse(conceptText);
 
-      // Step 2: Generate Visual Keyframe
       setLoadingStep('Generating visual keyframe...');
-      const imageResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-          parts: [
-            { text: `A high-end cinematic animation storyboard keyframe. Concept: ${prompt}. Visual Style: ${conceptText}. No text in image, 4k, artistic, motion blur, professional studio quality.` }
-          ]
-        },
-        config: {
-          imageConfig: { aspectRatio: "16:9" }
-        }
-      });
+      try {
+        const imageResponse = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: {
+            parts: [
+              { text: `A high-end cinematic animation storyboard keyframe. Concept: ${prompt}. Visual Style: ${conceptText}. No text in image, 4k, artistic, motion blur, professional studio quality.` }
+            ]
+          },
+          config: {
+            imageConfig: { aspectRatio: "16:9" }
+          }
+        });
 
-      for (const part of imageResponse.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          setAiImage(`data:image/png;base64,${part.inlineData.data}`);
-          break;
+        const parts = imageResponse.candidates?.[0]?.content?.parts || [];
+        const imagePart = parts.find(p => p.inlineData);
+        if (imagePart?.inlineData) {
+          setAiImage(`data:image/png;base64,${imagePart.inlineData.data}`);
         }
+      } catch (imgErr) {
+        console.warn("Visual generation skipped or failed:", imgErr);
+        // We still show the text even if the image fails
       }
-    } catch (error) {
-      console.error(error);
-      setAiResponse("The creative wires got crossed. Please try a different prompt!");
+
+    } catch (err: any) {
+      console.error(err);
+      setError("The creative wires got crossed. Please try a more descriptive prompt!");
     } finally {
       setIsLoading(false);
       setLoadingStep('');
@@ -108,7 +113,6 @@ const Services: React.FC = () => {
         </div>
       </section>
 
-      {/* Upgraded AI Lab */}
       <section className="px-6 py-40 bg-zinc-900/50">
         <div className="max-w-6xl mx-auto">
           <div className="glass p-12 rounded-[3rem] border-blue-500/30 border-2 shadow-[0_0_50px_rgba(59,130,246,0.1)]">
@@ -130,6 +134,7 @@ const Services: React.FC = () => {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="e.g. A digital bank for Mars colonists..."
                   className="w-full md:w-96 bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-16"
+                  onKeyDown={(e) => e.key === 'Enter' && handleBrainstorm()}
                 />
                 <button 
                   onClick={handleBrainstorm}
@@ -141,9 +146,17 @@ const Services: React.FC = () => {
               </div>
             </div>
 
+            {error && (
+              <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400">
+                <AlertCircle size={18} />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               {isLoading && (
                 <motion.div 
+                  key="loading"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -156,6 +169,7 @@ const Services: React.FC = () => {
 
               {(aiResponse || aiImage) && !isLoading && (
                 <motion.div
+                  key="results"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="grid grid-cols-1 lg:grid-cols-2 gap-12"
@@ -164,7 +178,7 @@ const Services: React.FC = () => {
                     <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-widest">
                       <FileText size={14} /> Narrative Brief
                     </div>
-                    <div className="prose prose-invert max-w-none text-zinc-300 whitespace-pre-line font-medium leading-relaxed">
+                    <div className="prose prose-invert prose-blue max-w-none text-zinc-300 whitespace-pre-line">
                       {aiResponse}
                     </div>
                   </div>
@@ -177,15 +191,11 @@ const Services: React.FC = () => {
                       {aiImage ? (
                         <img src={aiImage} alt="AI Concept" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-600 italic">
-                          Visualizing style...
+                        <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 gap-4">
+                          <ImageIcon size={40} strokeWidth={1} />
+                          <p className="italic text-sm">Visual preview unavailable for this prompt</p>
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-6 flex items-end">
-                        <button className="text-white text-xs font-bold flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
-                          Enlarge Concept
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </motion.div>
