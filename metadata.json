@@ -1,0 +1,7 @@
+{
+  "name": "Pigeon Studio - Motion Design Portfolio",
+  "description": "A premium, visual-first portfolio for an animation and motion design studio featuring project showcases, service deep-dives, and an AI-powered creative concept generator.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
