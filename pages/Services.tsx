@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SERVICES } from '../constants';
 import { GoogleGenAI } from '@google/genai';
-import { Sparkles, Send, Loader2, Image as ImageIcon, FileText, AlertCircle } from 'lucide-react';
+import { Sparkles, Send, Loader2, Image as ImageIcon, FileText, AlertCircle, Maximize2 } from 'lucide-react';
 
 const Services: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -25,31 +25,27 @@ const Services: React.FC = () => {
       
       setLoadingStep('Crafting narrative strategy...');
       const textResponse = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `You are a world-class Creative Director at Pigeon Studio. 
-        A client wants an animation concept for: "${prompt}". 
-        Provide a punchy 3-part brief: 
-        1. THE HOOK: A 1-sentence opening.
-        2. THE NARRATIVE: A short summary of the story.
-        3. VISUAL DIRECTION: A detailed description of the art style (colors, lighting, motion feel).`,
-        config: { temperature: 0.8 }
+        model: 'gemini-3-pro-preview',
+        config: { thinkingConfig: { thinkingBudget: 16000 } },
+        contents: `You are a legendary Creative Director. Provide a cinematic animation brief for: "${prompt}". 
+        Include: Hook, Narrative Summary, and Visual Language (lighting, palette, motion feel).`,
       });
       
       const conceptText = textResponse.text;
       if (!conceptText) throw new Error("Could not generate concept.");
       setAiResponse(conceptText);
 
-      setLoadingStep('Generating visual keyframe...');
+      setLoadingStep('Rendering 2K visual keyframe...');
       try {
         const imageResponse = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
+          model: 'gemini-3-pro-image-preview',
           contents: {
             parts: [
-              { text: `A high-end cinematic animation storyboard keyframe. Concept: ${prompt}. Visual Style: ${conceptText}. No text in image, 4k, artistic, motion blur, professional studio quality.` }
+              { text: `High-fidelity 3D cinematic animation keyframe. Concept: ${prompt}. Style: ${conceptText}. Professional lighting, Octane Render, masterpiece quality, no text.` }
             ]
           },
           config: {
-            imageConfig: { aspectRatio: "16:9" }
+            imageConfig: { aspectRatio: "16:9", imageSize: "1K" }
           }
         });
 
@@ -58,14 +54,16 @@ const Services: React.FC = () => {
         if (imagePart?.inlineData) {
           setAiImage(`data:image/png;base64,${imagePart.inlineData.data}`);
         }
-      } catch (imgErr) {
-        console.warn("Visual generation skipped or failed:", imgErr);
-        // We still show the text even if the image fails
+      } catch (imgErr: any) {
+        if (imgErr.message?.includes("not found")) {
+           setError("Premium Visuals requires a Studio Key. Please click the key icon in the navigation.");
+        }
+        console.warn("Visual generation skipped:", imgErr);
       }
 
     } catch (err: any) {
+      setError("The creative wires got crossed. Please ensure your Studio Key is active.");
       console.error(err);
-      setError("The creative wires got crossed. Please try a more descriptive prompt!");
     } finally {
       setIsLoading(false);
       setLoadingStep('');
@@ -101,7 +99,7 @@ const Services: React.FC = () => {
                   <li>Sound design integration</li>
                 </ul>
               </div>
-              <div className="flex-1 w-full h-[400px] overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl">
+              <div className="flex-1 w-full h-[400px] overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl bg-zinc-900">
                 <img 
                   src={service.image} 
                   className="w-full h-full object-cover hover:scale-110 transition-transform duration-1000" 
@@ -123,7 +121,7 @@ const Services: React.FC = () => {
                   <h2 className="text-4xl font-bold">Director's Concept Lab</h2>
                 </div>
                 <p className="text-zinc-400 text-lg max-w-xl">
-                  Input your core message and our AI Creative Director will visualize a cinematic concept for your brand.
+                  Input your core message and our Pro AI Director will storyboard a cinematic 2K concept.
                 </p>
               </div>
               
@@ -132,7 +130,7 @@ const Services: React.FC = () => {
                   type="text"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="e.g. A digital bank for Mars colonists..."
+                  placeholder="e.g. A digital bank for Mars..."
                   className="w-full md:w-96 bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-16"
                   onKeyDown={(e) => e.key === 'Enter' && handleBrainstorm()}
                 />
@@ -178,22 +176,27 @@ const Services: React.FC = () => {
                     <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-widest">
                       <FileText size={14} /> Narrative Brief
                     </div>
-                    <div className="prose prose-invert prose-blue max-w-none text-zinc-300 whitespace-pre-line">
+                    <div className="text-zinc-300 whitespace-pre-line leading-relaxed italic">
                       {aiResponse}
                     </div>
                   </div>
 
                   <div className="space-y-8">
                     <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-widest">
-                      <ImageIcon size={14} /> Visual Keyframe
+                      <ImageIcon size={14} /> 2K Keyframe Visual
                     </div>
                     <div className="aspect-video bg-zinc-800 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative group">
                       {aiImage ? (
-                        <img src={aiImage} alt="AI Concept" className="w-full h-full object-cover" />
+                        <>
+                          <img src={aiImage} alt="AI Concept" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                             <button className="bg-white text-black p-4 rounded-full shadow-2xl"><Maximize2 size={20} /></button>
+                          </div>
+                        </>
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 gap-4">
                           <ImageIcon size={40} strokeWidth={1} />
-                          <p className="italic text-sm">Visual preview unavailable for this prompt</p>
+                          <p className="italic text-sm">Waiting for visual output...</p>
                         </div>
                       )}
                     </div>
