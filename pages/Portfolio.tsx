@@ -3,23 +3,113 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PROJECTS } from '../constants';
 import { ProjectCategory } from '../types';
+import { GoogleGenAI } from '@google/genai';
+import { Search, Loader2, ExternalLink, Sparkles } from 'lucide-react';
 
 const Portfolio: React.FC = () => {
   const [filter, setFilter] = useState<ProjectCategory | 'All'>('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [trendResults, setTrendResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [trendText, setTrendText] = useState('');
 
   const categories = ['All', ...Object.values(ProjectCategory)];
-
   const filteredProjects = filter === 'All' 
     ? PROJECTS 
     : PROJECTS.filter(p => p.category === filter);
+
+  const handleTrendSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    setTrendResults([]);
+    setTrendText('');
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `What are the latest visual trends and award-winning examples for: "${searchQuery}" in animation and motion design for 2024? Give a brief summary.`,
+        config: {
+          tools: [{ googleSearch: {} }]
+        }
+      });
+
+      setTrendText(response.text || "");
+      setTrendResults(response.candidates?.[0]?.groundingMetadata?.groundingChunks || []);
+    } catch (error) {
+      console.error(error);
+      setTrendText("Failed to fetch live trends.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   return (
     <div className="px-6 py-20 max-w-7xl mx-auto min-h-screen">
       <header className="mb-20">
         <h1 className="text-5xl md:text-7xl font-black mb-6">Our Work</h1>
-        <p className="text-zinc-500 text-xl max-w-2xl">
+        <p className="text-zinc-500 text-xl max-w-2xl mb-12">
           From 3D product visualisations to character-led storytelling, explore our diverse body of work across different industries.
         </p>
+
+        {/* Live Trend Tool */}
+        <div className="glass p-8 rounded-3xl border-blue-500/20 border mb-20 bg-gradient-to-br from-blue-500/5 to-transparent">
+          <div className="flex items-center gap-2 mb-6">
+            <Sparkles className="text-blue-500 w-4 h-4" />
+            <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-300">Industry Inspiration Hub</h3>
+          </div>
+          <form onSubmit={handleTrendSearch} className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-grow">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search live trends (e.g., 'Modern 2D character styles')"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+              />
+            </div>
+            <button 
+              type="submit" 
+              disabled={isSearching}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2"
+            >
+              {isSearching ? <Loader2 className="animate-spin" size={18} /> : 'Search Live Trends'}
+            </button>
+          </form>
+
+          <AnimatePresence>
+            {trendText && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="bg-black/20 p-6 rounded-2xl border border-white/5"
+              >
+                <div className="prose prose-invert prose-sm max-w-none text-zinc-400 mb-6">
+                  {trendText}
+                </div>
+                {trendResults.length > 0 && (
+                  <div className="flex flex-wrap gap-4">
+                    {trendResults.map((chunk: any, i: number) => (
+                      chunk.web?.uri && (
+                        <a 
+                          key={i} 
+                          href={chunk.web.uri} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-3 py-1.5 rounded-full border border-blue-500/20"
+                        >
+                          {chunk.web.title || 'Source'} <ExternalLink size={10} />
+                        </a>
+                      )
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </header>
 
       {/* Filters */}
@@ -39,7 +129,6 @@ const Portfolio: React.FC = () => {
         ))}
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         <AnimatePresence mode="popLayout">
           {filteredProjects.map((project) => (
