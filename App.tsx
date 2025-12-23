@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Menu, X, Instagram, Facebook, Youtube, 
-  ArrowUpRight, Mail, Phone, MapPin, ExternalLink, Key, ShieldCheck, AlertCircle
+  Menu, X, Instagram, Youtube, 
+  ArrowUpRight, Mail, Phone, MapPin, ExternalLink, Key, ShieldCheck, AlertCircle, Sparkles
 } from 'lucide-react';
 
 import Home from './pages/Home';
@@ -23,35 +23,9 @@ const ScrollToTop = () => {
   return null;
 };
 
-// Key Selection Utility
-const useApiKey = () => {
-  const [hasKey, setHasKey] = useState(false);
-
-  const checkKey = async () => {
-    if (window.aistudio?.hasSelectedApiKey) {
-      const selected = await window.aistudio.hasSelectedApiKey();
-      setHasKey(selected);
-    }
-  };
-
-  useEffect(() => {
-    checkKey();
-  }, []);
-
-  const openPicker = async () => {
-    if (window.aistudio?.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      setHasKey(true); // Assume success per racing condition rules
-    }
-  };
-
-  return { hasKey, openPicker };
-};
-
-const Header: React.FC = () => {
+const Header: React.FC<{ hasKey: boolean; openPicker: () => void }> = ({ hasKey, openPicker }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { hasKey, openPicker } = useApiKey();
   const location = useLocation();
 
   const navLinks = [
@@ -86,7 +60,7 @@ const Header: React.FC = () => {
             }`}
           >
             {hasKey ? <ShieldCheck size={12} /> : <Key size={12} />}
-            {hasKey ? 'Studio Key Active' : 'Unlock Pro AI Features'}
+            {hasKey ? 'Studio Key Active' : 'Select Studio Key'}
           </button>
         </div>
 
@@ -126,7 +100,7 @@ const Header: React.FC = () => {
                 {link.name}
               </Link>
             ))}
-            <button onClick={openPicker} className="mt-8 text-blue-500 font-bold uppercase tracking-widest flex items-center gap-3">
+            <button onClick={() => { openPicker(); setIsOpen(false); }} className="mt-8 text-blue-500 font-bold uppercase tracking-widest flex items-center gap-3">
               <Key size={24} /> {hasKey ? 'Manage Keys' : 'Unlock Pro AI'}
             </button>
           </motion.div>
@@ -147,9 +121,6 @@ const Footer: React.FC = () => {
           <p className="text-zinc-400 text-lg max-w-sm mb-12 leading-relaxed font-medium">
             Crafting the next generation of visual narratives for brands that refuse to be ordinary.
           </p>
-          <div className="flex gap-4">
-            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-[10px] text-zinc-600 hover:text-white underline">Billing Docs</a>
-          </div>
         </div>
 
         <div className="md:col-span-2">
@@ -166,7 +137,7 @@ const Footer: React.FC = () => {
           <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] flex items-start gap-4">
             <AlertCircle className="text-blue-500 shrink-0" size={18} />
             <p className="text-zinc-500 text-sm italic">
-              Experience the full power of our AI Studio. Premium video and 4K visual generation requires a valid API key from a paid GCP project.
+              Premium video and 4K visual generation requires a valid API key from a paid GCP project. <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-blue-500 underline">Billing Documentation</a>.
             </p>
           </div>
         </div>
@@ -179,11 +150,72 @@ const Footer: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const [hasKey, setHasKey] = useState(false);
+  const [showKeyWall, setShowKeyWall] = useState(false);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio?.hasSelectedApiKey) {
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected);
+        // Prompt for key if not selected
+        if (!selected) {
+           setShowKeyWall(true);
+        }
+      }
+    };
+    checkKey();
+  }, []);
+
+  const openPicker = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // Assume success to avoid race condition as per guidelines
+      setHasKey(true);
+      setShowKeyWall(false);
+    }
+  };
+
   return (
     <HashRouter>
       <ScrollToTop />
       <div className="min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
-        <Header />
+        <Header hasKey={hasKey} openPicker={openPicker} />
+        
+        {/* Key Wall Overlay */}
+        <AnimatePresence>
+          {showKeyWall && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-center"
+            >
+              <div className="max-w-md">
+                <div className="w-20 h-20 bg-blue-500/20 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-blue-500/30">
+                  <Key size={40} className="text-blue-500" />
+                </div>
+                <h2 className="text-4xl font-bold mb-4">Unlock Pigeon Studio</h2>
+                <p className="text-zinc-400 mb-8 leading-relaxed">
+                  To experience our full Pro AI capabilities—including the Motion Reel generator and 2K storyboarding—please select an API key from a paid GCP project.
+                </p>
+                <button 
+                  onClick={openPicker}
+                  className="w-full bg-blue-500 text-white py-5 rounded-2xl font-bold text-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-3 shadow-2xl shadow-blue-500/20"
+                >
+                  Select Studio Key <Sparkles size={20} />
+                </button>
+                <button 
+                  onClick={() => setShowKeyWall(false)} 
+                  className="mt-6 text-zinc-600 hover:text-zinc-400 text-sm font-bold uppercase tracking-widest"
+                >
+                  Continue with Limited Features
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
